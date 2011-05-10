@@ -1,0 +1,105 @@
+#!/usr/bin/env python
+
+import logging
+import os.path
+import readline
+import sys
+from urllib import urlencode
+from urlparse import parse_qsl
+
+import argparse
+from rdioapi import Rdio
+
+
+def configure_keys(args):
+    if not args.consumer_token:
+        args.consumer_token = raw_input('Consumer token: ')
+    if not args.consumer_secret:
+        args.consumer_secret = raw_input('Consumer secret: ')
+    if not args.access_token:
+        data_store = dict()
+        logging.debug("TOKEN IS: %r", args.consumer_token)
+        rdio = Rdio(args.consumer_token, args.consumer_secret, data_store)
+        login_url = rdio.begin_authentication('oob')
+
+        print "Open this URL in your web browser to get an API PIN:"
+        print
+        print "    ", login_url
+        print
+        verifier = raw_input("PIN: ")
+
+        rdio.complete_authentication(verifier)
+
+        assert data_store['access_token'], "Authentication did not provide an access token"
+        args.access_token = urlencode(data_store['access_token'])
+
+    filepath = os.path.expanduser('~/.%s' % os.path.basename(__file__))
+    with open(filepath, 'w') as config_file:
+        config_file.write('--consumer-token\n')
+        config_file.write(args.consumer_token)
+        config_file.write('\n--consumer-secret\n')
+        config_file.write(args.consumer_secret)
+        config_file.write('\n--access-token\n')
+        config_file.write(args.access_token)
+        config_file.write('\n')
+
+    print "Configured!"
+
+
+def list_playlists(args):
+    
+    rdio = Rdio()
+
+
+def shuffle_playlist(args):
+    pass
+
+
+def load_config_args():
+    filepath = os.path.expanduser('~/.%s' % os.path.basename(__file__))
+    if not os.path.exists(filepath):
+        return list()
+
+    with open(filepath, 'r') as config_file:
+        config_args = [line.strip('\n') for line in config_file.readlines()]
+    return config_args
+
+
+def main(argv):
+    config_args = load_config_args()
+    args = config_args + argv
+
+    parser = argparse.ArgumentParser(description='Control Rdio from the command line.')
+    parser.set_defaults(verbosity=[2])
+    parser.add_argument('-v', dest='verbosity', action='append_const', const=1, help='be more verbose (stackable)')
+    parser.add_argument('-q', dest='verbosity', action='append_const', const=-1, help='be less verbose (stackable)')
+    parser.add_argument('--consumer-token')
+    parser.add_argument('--consumer-secret')
+    parser.add_argument('--access-token')
+    subparsers = parser.add_subparsers(title='subcommands', metavar='COMMAND')
+
+    parser_configure = subparsers.add_parser('configure', help='configures the API keys')
+    parser_configure.set_defaults(func=configure_keys)
+
+    parser_playlists = subparsers.add_parser('playlists', help='lists your playlists')
+    parser_playlists.set_defaults(func=list_playlists)
+
+    parser_shuffle = subparsers.add_parser('shuffle', help='shuffles a playlist')
+    parser_shuffle.set_defaults(func=shuffle_playlist)
+    parser_shuffle.add_argument('playlist', help='the playlist id')
+
+    args = parser.parse_args(args)
+
+    verbosity = sum(args.verbosity)
+    verbosity = 0 if verbosity < 0 else verbosity if verbosity < 4 else 4
+    log_level = (logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG)[verbosity]
+    logging.basicConfig(level=log_level)
+    logging.info('Set log level to %s', logging.getLevelName(log_level))
+
+    args.func(args)
+
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))
