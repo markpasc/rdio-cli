@@ -3,6 +3,7 @@
 from functools import wraps
 import logging
 import os.path
+from random import shuffle
 import readline
 import sys
 from urllib import urlencode
@@ -10,6 +11,7 @@ from urlparse import parse_qsl
 
 import argparse
 from prettytable import PrettyTable
+from progressbar import ProgressBar
 from rdioapi import Rdio
 
 
@@ -76,8 +78,29 @@ def list_playlists(rdio, args):
     table.printt()
 
 
-def shuffle_playlist(args):
-    pass
+@authd
+def shuffle_playlist(rdio, args):
+    playlists = rdio.getPlaylists(extras='trackKeys')
+    playlists = dict((pl['key'], pl) for pl in playlists['owned'] + playlists['collab'])
+
+    playlist = playlists[args.playlist]
+    tracks = playlist['trackKeys']
+
+    # Let's add the reshuffled tracks first, so if deletion fails
+    # you have duplicates instead of an empty playlist.
+    shuffled_tracks = list(tracks)
+    shuffle(shuffled_tracks)
+    logging.debug('Original tracks: %r', tracks)
+    logging.debug('Shuffled tracks: %r', shuffled_tracks)
+
+    # Apparently Rdio sorts tracks in addToPlaylist first (?!) so
+    # we have to add them one by one.
+    progress = ProgressBar()
+    for track in progress(shuffled_tracks):
+        rdio.addToPlaylist(playlist=args.playlist, tracks=track)
+    rdio.removeFromPlaylist(playlist=args.playlist, index=0, count=len(tracks), tracks=','.join(tracks))
+
+    logging.info('Shuffled playlist "%s"', playlist['name'])
 
 
 def load_config_args():
