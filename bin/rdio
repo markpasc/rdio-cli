@@ -2,6 +2,7 @@
 
 from functools import wraps
 import logging
+import os
 import os.path
 from random import shuffle
 import readline
@@ -39,6 +40,8 @@ def configure_keys(args):
         args.access_token = urlencode(data_store['access_token'])
 
     filepath = os.path.expanduser('~/.%s' % os.path.basename(__file__))
+    # Don't let anybody else read the config file.
+    os.umask(077)
     with open(filepath, 'w') as config_file:
         config_file.write('--consumer-token\n')
         config_file.write(args.consumer_token)
