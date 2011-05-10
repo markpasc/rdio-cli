@@ -83,9 +83,7 @@ def list_playlists(rdio, args):
 
 @authd
 def shuffle_playlist(rdio, args):
-    playlists = rdio.getPlaylists(extras='trackKeys')
-    playlists = dict((pl['key'], pl) for pl in playlists['owned'] + playlists['collab'])
-
+    playlists = rdio.get(keys=args.playlist, extras='trackKeys')
     playlist = playlists[args.playlist]
     tracks = playlist['trackKeys']
 
