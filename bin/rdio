@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from functools import wraps
 import logging
 import os.path
 import readline
@@ -8,6 +9,7 @@ from urllib import urlencode
 from urlparse import parse_qsl
 
 import argparse
+from prettytable import PrettyTable
 from rdioapi import Rdio
 
 
@@ -31,6 +33,7 @@ def configure_keys(args):
         rdio.complete_authentication(verifier)
 
         assert data_store['access_token'], "Authentication did not provide an access token"
+        logging.debug("ACCESS TOKEN: %r", data_store['access_token'])
         args.access_token = urlencode(data_store['access_token'])
 
     filepath = os.path.expanduser('~/.%s' % os.path.basename(__file__))
@@ -46,9 +49,31 @@ def configure_keys(args):
     print "Configured!"
 
 
-def list_playlists(args):
-    
-    rdio = Rdio()
+def authd(fn):
+    @wraps(fn)
+    def moo(args, *pargs, **kwargs):
+        data_store = {'access_token': dict(parse_qsl(args.access_token))}
+        logging.debug("ACCESS TOKEN: %r", data_store['access_token'])
+        rdio = Rdio(args.consumer_token, args.consumer_secret, data_store)
+        return fn(rdio, args, *pargs, **kwargs)
+    return moo
+
+
+@authd
+def list_playlists(rdio, args):
+    playlists = rdio.getPlaylists()
+
+    cols = ['Name', 'Owner', 'Relationship', 'Key']
+    table = PrettyTable(cols)
+    for col in cols:
+        table.set_field_align(col, 'l')
+    for pl in playlists['owned']:
+        table.add_row([pl['name'], pl['owner'], 'Owner', pl['key']])
+    for pl in playlists['collab']:
+        table.add_row([pl['name'], pl['owner'], 'Collaborator', pl['key']])
+    for pl in playlists['subscribed']:
+        table.add_row([pl['name'], pl['owner'], 'Subscriber', pl['key']])
+    table.printt()
 
 
 def shuffle_playlist(args):

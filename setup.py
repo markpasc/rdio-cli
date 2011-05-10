@@ -7,6 +7,6 @@ setup(
     include_package_data=True,
     scripts=['bin/rdio'],
 
-    requires=['argparse', 'Rdio'],
-    install_requires=['argparse', 'Rdio'],
+    requires=['argparse', 'Rdio', 'PrettyTable'],
+    install_requires=['argparse', 'Rdio', 'PrettyTable'],
 )
