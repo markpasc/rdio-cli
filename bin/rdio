@@ -183,7 +183,7 @@ def improvise_playlist(rdio, args):
         'method': 'track.getsimilar',
         'artist': artistname,
         'track': trackname,
-        'limit': 25,
+        'limit': 40,
     }
     lastfm_url = urlunsplit(('http', 'ws.audioscrobbler.com', '/2.0/', urlencode(query), ''))
 
@@ -206,17 +206,28 @@ def improvise_playlist(rdio, args):
             tracks=args.track)
         playlistkey = playlist['key']
 
-    progress = ProgressBar()
-    for lastfm_track in progress(similar_tracks):
-        lfm_artistname, lfm_trackname = lastfm_track['artist']['name'], lastfm_track['name']
-        query = u' '.join((lfm_artistname, lfm_trackname))
-        results = rdio.search(query=query.encode('utf8'), types='Track', never_or='true', count=1)
+    progress = ProgressBar(maxval=25).start()
+    tracks_added = 0
+    for lastfm_track in similar_tracks:
+        lfm_artistname, lfm_trackname = lastfm_track['artist']['name'].encode('utf8'), lastfm_track['name'].encode('utf8')
+        query = ' '.join((lfm_artistname, lfm_trackname))
+        results = rdio.search(query=query, types='Track', never_or='true', count=1)
         if results['number_results'] < 1:
-            logging.warn("Couldn't find %s by %s on Rdio", lfm_trackname.encode('utf8'), lfm_artistname.encode('utf8'))
+            logging.warn("Couldn't find %s by %s on Rdio", lfm_trackname, lfm_artistname)
             continue
 
-        similar_track_key = results['results'][0]['key']
-        rdio.addToPlaylist(playlist=playlistkey, tracks=similar_track_key)
+        similar_track = results['results'][0]
+        if not similar_track['canStream']:
+            logging.warn("Can't stream %s by %s from Rdio, skipping", lfm_trackname, lfm_artistname)
+            continue
+
+        rdio.addToPlaylist(playlist=playlistkey, tracks=similar_track['key'])
+
+        tracks_added += 1
+        progress.update(tracks_added)
+        if tracks_added >= 25:
+            break
+    progress.finish()
 
     print "Playlist improvised into %s" % playlist['shortUrl']
 
