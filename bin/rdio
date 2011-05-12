@@ -2,6 +2,7 @@
 
 from __future__ import division
 
+from datetime import datetime
 from itertools import count, izip
 from functools import wraps
 import logging
@@ -11,12 +12,17 @@ from random import shuffle
 import readline
 import sys
 from urllib import urlencode
-from urlparse import parse_qsl
+from urlparse import parse_qsl, urlunsplit
+
+try:
+    import json
+except ImportError:
+    import simplejson as json
 
 import argparse
 from prettytable import PrettyTable
 from progressbar import ProgressBar
-from rdioapi import Rdio
+from rdioapi import Rdio, httplib2
 
 
 def configure_keys(args):
@@ -165,6 +171,56 @@ def sort_playlist(rdio, args):
     logging.info('Sorted playlist "%s"', playlist['name'])
 
 
+@authd
+def improvise_playlist(rdio, args):
+    tracks = rdio.get(keys=args.track)
+    track = tracks[args.track]
+    trackname, artistname = track['name'], track['artist']
+
+    query = {
+        'api_key': args.lastfm_key,
+        'format': 'json',
+        'method': 'track.getsimilar',
+        'artist': artistname,
+        'track': trackname,
+        'limit': 25,
+    }
+    lastfm_url = urlunsplit(('http', 'ws.audioscrobbler.com', '/2.0/', urlencode(query), ''))
+
+    http = httplib2.Http()
+    resp, cont = http.request(lastfm_url)
+    if resp.status != 200:
+        logging.error('Unexpected response from Last.fm: %d %s', resp.status, resp.reason)
+        return
+
+    similar = json.loads(cont)
+    similar_tracks = similar['similartracks']['track']
+
+    if args.playlist:
+        playlistkey = args.playlist
+        playlist = rdio.get(keys=playlistkey)[playlistkey]
+        rdio.addToPlaylist(playlist=playlistkey, tracks=args.track)
+    else:
+        playlist = rdio.createPlaylist(name=datetime.now().strftime('Improvisation %Y-%m-%d'),
+            description='Improvised from %s by %s (powered by Last.fm)' % (trackname, artistname),
+            tracks=args.track)
+        playlistkey = playlist['key']
+
+    progress = ProgressBar()
+    for lastfm_track in progress(similar_tracks):
+        lfm_artistname, lfm_trackname = lastfm_track['artist']['name'], lastfm_track['name']
+        query = u' '.join((lfm_artistname, lfm_trackname))
+        results = rdio.search(query=query.encode('utf8'), types='Track', never_or='true', count=1)
+        if results['number_results'] < 1:
+            logging.warn("Couldn't find %s by %s on Rdio", lfm_trackname.encode('utf8'), lfm_artistname.encode('utf8'))
+            continue
+
+        similar_track_key = results['results'][0]['key']
+        rdio.addToPlaylist(playlist=playlistkey, tracks=similar_track_key)
+
+    print "Playlist improvised into %s" % playlist['shortUrl']
+
+
 def load_config_args():
     filepath = os.path.expanduser('~/.%s' % os.path.basename(__file__))
     if not os.path.exists(filepath):
@@ -207,6 +263,11 @@ def main(argv):
     parser_shuffle = subparsers.add_parser('shuffle', help='shuffles a playlist')
     parser_shuffle.set_defaults(func=sort_playlist, by='shuffle')
     parser_shuffle.add_argument('playlist', help='the playlist key')
+
+    parser_improvise = subparsers.add_parser('improvise', help='create a playlist similar to one track')
+    parser_improvise.set_defaults(func=improvise_playlist)
+    parser_improvise.add_argument('track', help='the track to improvise from (key)')
+    parser_improvise.add_argument('--playlist', help='the playlist to append to (key; by default, makes a new playlist)')
 
     args = parser.parse_args(args)
 
