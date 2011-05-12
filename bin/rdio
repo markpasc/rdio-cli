@@ -211,6 +211,7 @@ def improvise_playlist(rdio, args):
         'artist': artistname,
         'track': trackname,
         'limit': 40,
+        'autocorrect': '1',
     }
     lastfm_url = urlunsplit(('http', 'ws.audioscrobbler.com', '/2.0/', urlencode(query), ''))
 
@@ -221,6 +222,7 @@ def improvise_playlist(rdio, args):
         return
 
     similar = json.loads(cont)
+    logging.debug("Similar track response: %r", similar)
     similar_tracks = similar['similartracks']['track']
 
     if args.playlist:
@@ -236,6 +238,7 @@ def improvise_playlist(rdio, args):
     progress = ProgressBar(maxval=25).start()
     tracks_added = 0
     for lastfm_track in similar_tracks:
+        logging.debug('Last.fm track: %r', lastfm_track)
         lfm_artistname, lfm_trackname = lastfm_track['artist']['name'].encode('utf8'), lastfm_track['name'].encode('utf8')
         query = ' '.join((lfm_artistname, lfm_trackname))
         results = rdio.search(query=query, types='Track', never_or='true', count=1)
