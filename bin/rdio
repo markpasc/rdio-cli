@@ -3,7 +3,7 @@
 from __future__ import division
 
 from datetime import datetime
-from itertools import count, izip
+from itertools import chain, count, izip
 from functools import wraps
 import logging
 import os
@@ -200,15 +200,23 @@ def sort_playlist(rdio, args):
 
 @authd
 def search(rdio, args):
-    query = ' '.join(args.query)
-    results = rdio.search(query=query, types='Artist,Album,Track', count=args.count)
+    query = ' '.join(chain(args.artist, args.album, args.track, args.query))
+    logging.debug('Whole query is: %r', query)
+    resultset = rdio.search(query=query, types='Artist,Album,Track', count=args.count)
+
+    results = (result for result in resultset['results'] if result['type'] in ('t', 'a', 'r'))
+    if args.artist:
+        results = (result for result in results if ' '.join(args.artist).lower() in (result['name'] if result['type'] == 'r' else result['artist']).lower())
+    if args.album:
+        results = (result for result in results if ' '.join(args.album).lower() in (result['name'] if result['type'] == 'a' else result.get('album', '')).lower())
+    if args.track:
+        results = (result for result in results if result['type'] == 't' and ' '.join(args.track).lower() in result['name'].lower())
 
     cols = ['Track', 'Album', 'Artist', 'Key']
     table = PrettyTable(cols)
     for col in cols:
         table.set_field_align(col, 'l')
-    for result in results['results']:
-        logging.debug(result)
+    for result in results:
         result_name = u'%(name)s' if result['type'] == 'r' else u'%(name)s by %(artist)s'
         if result['type'] == 't':
             table.add_row([result['name'], result['album'], result['artist'], result['key']])
@@ -330,7 +338,10 @@ def main(argv):
 
     parser_search = subparsers.add_parser('search', help='search for something')
     parser_search.set_defaults(func=search)
-    parser_search.add_argument('query', nargs='+', help='the text to search for')
+    parser_search.add_argument('query', nargs='*', help='the text to search for')
+    parser_search.add_argument('--artist', default=[], nargs='+', help='search text to require in the artist field')
+    parser_search.add_argument('--album', default=[], nargs='+', help='search text to require in the album field')
+    parser_search.add_argument('--track', default=[], nargs='+', help='search text to require in the track name field')
     parser_search.add_argument('--count', type=int, default=15, help='the number of results to show (default: 15)')
 
     parser_improvise = subparsers.add_parser('improvise', help='create a playlist similar to one track')
