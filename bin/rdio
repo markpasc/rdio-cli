@@ -104,7 +104,7 @@ def show_playlist(rdio, playlist, args):
     trackdata = rdio.get(keys=','.join(trackkeys))
     tracks = [trackdata[trackkey] for trackkey in trackkeys]
 
-    cols = ['#', 'Title', 'Artist', 'Album', 'Time']
+    cols = ['#', 'Title', 'Artist', 'Album', 'Time', 'Key']
     table = PrettyTable(cols)
     table.set_field_align('#', 'r')
     for col in cols[1:]:
@@ -112,7 +112,7 @@ def show_playlist(rdio, playlist, args):
     for i, track in izip(count(1), tracks):
         duration_secs = track['duration']
         duration = '%d:%02d' % (duration_secs / 60, duration_secs % 60)
-        table.add_row([i, track['name'], track['artist'], track['album'], duration])
+        table.add_row([i, track['name'], track['artist'], track['album'], duration, track['key']])
     table.printt()
 
 
