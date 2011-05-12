@@ -95,12 +95,8 @@ def list_playlists(rdio, args):
     table.printt()
 
 
-def show_playlist(rdio, playlist, args):
-    logging.debug("Playlist: %r", playlist)
-
-    print "%(name)s\n%(owner)s\n%(shortUrl)s\n" % playlist
-
-    trackkeys = playlist['trackKeys']
+def print_tracks_in_thing(thing):
+    trackkeys = thing['trackKeys']
     trackdata = rdio.get(keys=','.join(trackkeys))
     tracks = [trackdata[trackkey] for trackkey in trackkeys]
 
@@ -116,13 +112,44 @@ def show_playlist(rdio, playlist, args):
     table.printt()
 
 
+def show_playlist(rdio, playlist, args):
+    print "%(name)s\n%(owner)s\n%(shortUrl)s\n" % playlist
+    print_tracks_in_thing(playlist)
+
+
+def show_artist(rdio, artist, args):
+    print "%(name)s\n%(length)d songs on %(albumCount)d albums\n%(shortUrl)s\n" % artist
+
+    albums = rdio.getAlbumsForArtist(artist=artist['key'], featuring='true')
+
+    cols = ['Name', 'Artist', 'Time', 'Key']
+    table = PrettyTable(cols)
+    for col in cols:
+        table.set_field_align(col, 'l')
+    for album in albums:
+        duration_secs = album['duration']
+        duration = '%d:%02d' % (duration_secs / 60, duration_secs % 60)
+        table.add_row([album['name'], album['artist'], duration, album['key']])
+    table.printt()
+
+
+def show_album(rdio, album, args):
+    duration_secs = album['duration']
+    duration = '%d:%02d' % (duration_secs / 60, duration_secs % 60)
+    print ("%(name)s\n%(length)d songs (%%s)\n%(shortUrl)s\n" % album) % (duration,)
+
+    print_tracks_in_thing(album)
+
+
 @authd
 def show_thing(rdio, args):
-    things = rdio.get(keys=args.key, extras='trackKeys')
+    things = rdio.get(keys=args.key, extras='trackKeys,albumCount')
     thing = things[args.key]
 
     show_funcs = {
         'p': show_playlist,
+        'r': show_artist,
+        'a': show_album,
     }
 
     thing_type = thing['type']
