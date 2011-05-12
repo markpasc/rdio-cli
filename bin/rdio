@@ -2,6 +2,7 @@
 
 from __future__ import division
 
+from itertools import count, izip
 from functools import wraps
 import logging
 import os
@@ -83,23 +84,43 @@ def list_playlists(rdio, args):
     table.printt()
 
 
-@authd
-def show_playlist(rdio, args):
-    playlists = rdio.get(keys=args.key, extras='trackKeys')
-    playlist = playlists[args.key]
+def show_playlist(rdio, playlist, args):
+    logging.debug("Playlist: %r", playlist)
+
+    print "%(name)s\n%(owner)s\n%(shortUrl)s\n" % playlist
+
     trackkeys = playlist['trackKeys']
     trackdata = rdio.get(keys=','.join(trackkeys))
     tracks = [trackdata[trackkey] for trackkey in trackkeys]
 
-    cols = ['Title', 'Artist', 'Album', 'Time']
+    cols = ['#', 'Title', 'Artist', 'Album', 'Time']
     table = PrettyTable(cols)
-    for col in cols:
+    table.set_field_align('#', 'r')
+    for col in cols[1:]:
         table.set_field_align(col, 'l')
-    for track in tracks:
+    for i, track in izip(count(1), tracks):
         duration_secs = track['duration']
         duration = '%d:%02d' % (duration_secs / 60, duration_secs % 60)
-        table.add_row([track['name'], track['artist'], track['album'], duration])
+        table.add_row([i, track['name'], track['artist'], track['album'], duration])
     table.printt()
+
+
+@authd
+def show_thing(rdio, args):
+    things = rdio.get(keys=args.key, extras='trackKeys')
+    thing = things[args.key]
+
+    show_funcs = {
+        'p': show_playlist,
+    }
+
+    thing_type = thing['type']
+    try:
+        func = show_funcs[thing_type]
+    except KeyError:
+        raise NotImplementedError('Unknown Rdio thing type %r' % thing_type)
+
+    func(rdio, thing, args)
 
 
 @authd
@@ -152,7 +173,7 @@ def main(argv):
     parser_configure.set_defaults(func=configure_keys)
 
     parser_show = subparsers.add_parser('show', help='shows something to you')
-    parser_show.set_defaults(func=show_playlist)
+    parser_show.set_defaults(func=show_thing)
     parser_show.add_argument('key', help='the key of the thing to show')
 
     parser_playlists = subparsers.add_parser('playlists', help='lists your playlists')
@@ -170,7 +191,10 @@ def main(argv):
     logging.basicConfig(level=log_level)
     logging.info('Set log level to %s', logging.getLevelName(log_level))
 
-    args.func(args)
+    try:
+        args.func(args)
+    except KeyboardInterrupt:
+        return 1
 
     return 0
 
