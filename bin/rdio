@@ -199,6 +199,29 @@ def sort_playlist(rdio, args):
 
 
 @authd
+def search(rdio, args):
+    query = ' '.join(args.query)
+    results = rdio.search(query=query, types='Artist,Album,Track', count=args.count)
+
+    cols = ['Track', 'Album', 'Artist', 'Key']
+    table = PrettyTable(cols)
+    for col in cols:
+        table.set_field_align(col, 'l')
+    for result in results['results']:
+        logging.debug(result)
+        result_name = u'%(name)s' if result['type'] == 'r' else u'%(name)s by %(artist)s'
+        if result['type'] == 't':
+            table.add_row([result['name'], result['album'], result['artist'], result['key']])
+        elif result['type'] == 'a':
+            table.add_row(['', result['name'], result['artist'], result['key']])
+        elif result['type'] == 'r':
+            table.add_row(['', '', result['name'], result['key']])
+        else:
+            raise NotImplementedError("Unexpected Rdio object type %r in search results" % result['type'])
+    table.printt()
+
+
+@authd
 def improvise_playlist(rdio, args):
     tracks = rdio.get(keys=args.track)
     track = tracks[args.track]
@@ -304,6 +327,11 @@ def main(argv):
     parser_shuffle = subparsers.add_parser('shuffle', help='shuffles a playlist')
     parser_shuffle.set_defaults(func=sort_playlist, by='shuffle')
     parser_shuffle.add_argument('playlist', help='the playlist key')
+
+    parser_search = subparsers.add_parser('search', help='search for something')
+    parser_search.set_defaults(func=search)
+    parser_search.add_argument('query', nargs='+', help='the text to search for')
+    parser_search.add_argument('--count', type=int, default=15, help='the number of results to show (default: 15)')
 
     parser_improvise = subparsers.add_parser('improvise', help='create a playlist similar to one track')
     parser_improvise.set_defaults(func=improvise_playlist)
