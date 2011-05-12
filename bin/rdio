@@ -124,26 +124,40 @@ def show_thing(rdio, args):
 
 
 @authd
-def shuffle_playlist(rdio, args):
+def sort_playlist(rdio, args):
     playlists = rdio.get(keys=args.playlist, extras='trackKeys')
     playlist = playlists[args.playlist]
-    tracks = playlist['trackKeys']
+    trackkeys = playlist['trackKeys']
 
-    # Let's add the reshuffled tracks first, so if deletion fails
-    # you have duplicates instead of an empty playlist.
-    shuffled_tracks = list(tracks)
-    shuffle(shuffled_tracks)
-    logging.debug('Original tracks: %r', tracks)
-    logging.debug('Shuffled tracks: %r', shuffled_tracks)
+    # Let's add the sorted tracks before deleting the existing ones, so
+    # if deletion fails you have duplicates instead of an empty playlist.
+    if args.by == 'key':
+        # Abuse Rdio's auto-sort in addToPlaylist, instead of laborious
+        # sorting and re-adding here.
+        rdio.addToPlaylist(playlist=args.playlist, tracks=','.join(trackkeys))
+    else:
+        if args.by == 'shuffle':
+            # We don't care about the track data, so don't fetch it.
+            sorted_trackkeys = list(trackkeys)
+            shuffle(sorted_trackkeys)
+        else:
+            trackdata = rdio.get(keys=','.join(trackkeys))
+            sorted_tracks = sorted(trackdata.itervalues(), key=lambda x: x.get(args.by))
+            sorted_trackkeys = [track['key'] for track in sorted_tracks]
 
-    # Apparently Rdio sorts tracks in addToPlaylist first (?!) so
-    # we have to add them one by one.
-    progress = ProgressBar()
-    for track in progress(shuffled_tracks):
-        rdio.addToPlaylist(playlist=args.playlist, tracks=track)
-    rdio.removeFromPlaylist(playlist=args.playlist, index=0, count=len(tracks), tracks=','.join(tracks))
+        logging.debug('Original tracks: %r', trackkeys)
+        logging.debug('Sorted tracks:   %r', sorted_trackkeys)
 
-    logging.info('Shuffled playlist "%s"', playlist['name'])
+        # Apparently Rdio sorts tracks in addToPlaylist first (?!) so
+        # we have to add them one by one.
+        progress = ProgressBar()
+        for trackkey in progress(sorted_trackkeys):
+            rdio.addToPlaylist(playlist=args.playlist, tracks=trackkey)
+
+    # Finally, remove the original order from the front of the playlist.
+    rdio.removeFromPlaylist(playlist=args.playlist, index=0, count=len(trackkeys), tracks=','.join(trackkeys))
+
+    logging.info('Sorted playlist "%s"', playlist['name'])
 
 
 def load_config_args():
@@ -179,9 +193,14 @@ def main(argv):
     parser_playlists = subparsers.add_parser('playlists', help='lists your playlists')
     parser_playlists.set_defaults(func=list_playlists)
 
+    parser_sort = subparsers.add_parser('sort', help='sorts a playlist')
+    parser_sort.set_defaults(func=sort_playlist)
+    parser_sort.add_argument('playlist', help='the playlist key')
+    parser_sort.add_argument('--by', default='key', help='the track property to sort by (try "artist" or ""; default "key")')
+
     parser_shuffle = subparsers.add_parser('shuffle', help='shuffles a playlist')
-    parser_shuffle.set_defaults(func=shuffle_playlist)
-    parser_shuffle.add_argument('playlist', help='the playlist id')
+    parser_shuffle.set_defaults(func=sort_playlist, by='shuffle')
+    parser_shuffle.add_argument('playlist', help='the playlist key')
 
     args = parser.parse_args(args)
 
