@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import division
+
 from functools import wraps
 import logging
 import os
@@ -82,6 +84,25 @@ def list_playlists(rdio, args):
 
 
 @authd
+def show_playlist(rdio, args):
+    playlists = rdio.get(keys=args.key, extras='trackKeys')
+    playlist = playlists[args.key]
+    trackkeys = playlist['trackKeys']
+    trackdata = rdio.get(keys=','.join(trackkeys))
+    tracks = [trackdata[trackkey] for trackkey in trackkeys]
+
+    cols = ['Title', 'Artist', 'Album', 'Time']
+    table = PrettyTable(cols)
+    for col in cols:
+        table.set_field_align(col, 'l')
+    for track in tracks:
+        duration_secs = track['duration']
+        duration = '%d:%02d' % (duration_secs / 60, duration_secs % 60)
+        table.add_row([track['name'], track['artist'], track['album'], duration])
+    table.printt()
+
+
+@authd
 def shuffle_playlist(rdio, args):
     playlists = rdio.get(keys=args.playlist, extras='trackKeys')
     playlist = playlists[args.playlist]
@@ -129,6 +150,10 @@ def main(argv):
 
     parser_configure = subparsers.add_parser('configure', help='configures the API keys')
     parser_configure.set_defaults(func=configure_keys)
+
+    parser_show = subparsers.add_parser('show', help='shows something to you')
+    parser_show.set_defaults(func=show_playlist)
+    parser_show.add_argument('key', help='the key of the thing to show')
 
     parser_playlists = subparsers.add_parser('playlists', help='lists your playlists')
     parser_playlists.set_defaults(func=list_playlists)
