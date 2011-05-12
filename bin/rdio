@@ -41,6 +41,8 @@ def configure_keys(args):
         assert data_store['access_token'], "Authentication did not provide an access token"
         logging.debug("ACCESS TOKEN: %r", data_store['access_token'])
         args.access_token = urlencode(data_store['access_token'])
+    if not args.lastfm_key:
+        args.lastfm_key = raw_input('Last.fm API key (optional): ')
 
     filepath = os.path.expanduser('~/.%s' % os.path.basename(__file__))
     # Don't let anybody else read the config file.
@@ -52,6 +54,9 @@ def configure_keys(args):
         config_file.write(args.consumer_secret)
         config_file.write('\n--access-token\n')
         config_file.write(args.access_token)
+        if args.lastfm_key:
+            config_file.write('\n--lastfm-key\n')
+            config_file.write(args.lastfm_key)
         config_file.write('\n')
 
     print "Configured!"
@@ -178,9 +183,10 @@ def main(argv):
     parser.set_defaults(verbosity=[2])
     parser.add_argument('-v', dest='verbosity', action='append_const', const=1, help='be more verbose (stackable)')
     parser.add_argument('-q', dest='verbosity', action='append_const', const=-1, help='be less verbose (stackable)')
-    parser.add_argument('--consumer-token')
-    parser.add_argument('--consumer-secret')
-    parser.add_argument('--access-token')
+    parser.add_argument('--consumer-token', help='Rdio API consumer token')
+    parser.add_argument('--consumer-secret', help='Rdio API consumer secret')
+    parser.add_argument('--access-token', help='Rdio access token (in web POST format)')
+    parser.add_argument('--lastfm-key', help='Last.fm API key')
     subparsers = parser.add_subparsers(title='subcommands', metavar='COMMAND')
 
     parser_configure = subparsers.add_parser('configure', help='configures the API keys')
