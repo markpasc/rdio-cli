@@ -70,7 +70,7 @@ See `rdio --help` for supported commands.
     Echo Nest API key (optional): va2SLf3lpGwEKYPxO
     Configured!
 
-    $ bin/rdio improvise t4104950
+    $ rdio improvise t4104950
     100% |#######################################################################################################|
     Playlist improvised into http://rd.io/x/QV5FbjNes9U
 
