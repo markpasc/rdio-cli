@@ -141,6 +141,18 @@ def show_album(rdio, album, args):
     print_tracks_in_thing(rdio, album)
 
 
+def show_track(rdio, track, args):
+    cols = ['#', 'Title', 'Artist', 'Album', 'Time', 'Key']
+    table = PrettyTable(cols)
+    for col in cols:
+        table.set_field_align(col, 'l')
+    for track in (track,):
+        duration_secs = track['duration']
+        duration = '%d:%02d' % (duration_secs / 60, duration_secs % 60)
+        table.add_row([track['trackNum'], track['name'], track['artist'], track['album'], duration, track['key']])
+    table.printt()
+
+
 @authd
 def show_thing(rdio, args):
     things = rdio.get(keys=args.key, extras='trackKeys,albumCount')
@@ -150,6 +162,7 @@ def show_thing(rdio, args):
         'p': show_playlist,
         'r': show_artist,
         'a': show_album,
+        't': show_track,
     }
 
     thing_type = thing['type']
