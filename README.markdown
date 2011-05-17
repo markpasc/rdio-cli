@@ -3,7 +3,7 @@
 `rdio-cli` is a command line application for controlling some Rdio API functions. It can:
 
 * search Rdio for tracks, albums, and artists
-* show you tracks, albums, and artists
+* show you tracks, albums, and artists by key (Rdio ID)
 * list your playlists
 * sort or shuffle a playlist
 * create a new playlist based on a song (using the Echo Nest API)
