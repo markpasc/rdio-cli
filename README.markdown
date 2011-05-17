@@ -26,10 +26,12 @@ First, you'll need a Rdio API key. You can [register and create a key at develop
          https://www.rdio.com/oauth/authorize?oauth_token=FGTgBlc5lLylBrOgWA37l4zP
 
     PIN: 7496
-    Last.fm API key (optional):
+    Echo Nest API key (optional):
     Configured!
 
 This saves an OAuth access token to your home directory in an `.rdio` file, so take care with it! Subsequent commands then use that access token to authenticate, so you need only configure the keys once.
+
+As the Echo Nest API is only used with the `improvise` command, you only need to supply one to use that command. Sign up on [the Echo Nest developer site](http://developer.echonest.com/) to get an Echo Nest API key.
 
 
 ## Usage ##
@@ -50,23 +52,22 @@ See `rdio --help` for supported commands.
     $ rdio shuffle p113050
     100% |#######################################################################################################|
 
-    $ rdio search moby sky is broken
-    +--------------------+---------------------------+-------------------+----------+
-    |       Track        |           Album           |       Artist      |   Key    |
-    +--------------------+---------------------------+-------------------+----------+
-    | The Sky Is Broken  | Replay: A Tribute To Moby | Aleister Einstein | t1350373 |
-    | Sky Is Broken, The | Play                      | Moby              | t2496501 |
-    +--------------------+---------------------------+-------------------+----------+
+    $ rdio search moby south side
+    +----------------------------------------+----------------------------+----------+----------+
+    |                 Track                  |           Album            |  Artist  |   Key    |
+    +----------------------------------------+----------------------------+----------+----------+
+    | South side                             | Go - The Very Best of Moby | Moby     | t4104950 |
+    | South Side (Pete Heller Park Lane Dub) | Go - The Very Best of Moby | Moby     | t4105406 |
+    | South Side                             | Replay: A Tribute To Moby  | Tre' Lux | t1350298 |
+    | South Side                             | Play                       | Moby     | t2495635 |
+    +----------------------------------------+----------------------------+----------+----------+
 
     $ rdio configure
-    Last.fm API key (optional): va2SLf3lpGwEKYPxOW1DRKp6YzPhHiK4
+    Echo Nest API key (optional): va2SLf3lpGwEKYPxO
     Configured!
 
-    $ bin/rdio improvise t2496501
-    WARNING:root:Can't stream If Things Were Perfect by Moby from Rdio, skipping
-    WARNING:root:Can't stream My Weakness by Moby from Rdio, skipping
-    WARNING:root:Couldn't find Turquoise Hexagon Sun by Boards of Canada on Rdio
+    $ bin/rdio improvise t4104950
     100% |#######################################################################################################|
-    Playlist improvised into http://rd.io/x/QV5FbjNehwk
+    Playlist improvised into http://rd.io/x/QV5FbjNes9U
 
     $
