@@ -47,8 +47,8 @@ def configure_keys(args):
         assert data_store['access_token'], "Authentication did not provide an access token"
         logging.debug("ACCESS TOKEN: %r", data_store['access_token'])
         args.access_token = urlencode(data_store['access_token'])
-    if not args.lastfm_key:
-        args.lastfm_key = raw_input('Last.fm API key (optional): ')
+    if not args.echonest_key:
+        args.echonest_key = raw_input('Echo Nest API key (optional): ')
 
     filepath = os.path.expanduser('~/.%s' % os.path.basename(__file__))
     # Don't let anybody else read the config file.
@@ -60,9 +60,9 @@ def configure_keys(args):
         config_file.write(args.consumer_secret)
         config_file.write('\n--access-token\n')
         config_file.write(args.access_token)
-        if args.lastfm_key:
-            config_file.write('\n--lastfm-key\n')
-            config_file.write(args.lastfm_key)
+        if args.echonest_key:
+            config_file.write('\n--echonest-key\n')
+            config_file.write(args.echonest_key)
         config_file.write('\n')
 
     print "Configured!"
@@ -231,30 +231,41 @@ def search(rdio, args):
 
 @authd
 def improvise_playlist(rdio, args):
+    if not args.echonest_key:
+        print "Echo Nest API key is required to improvise a playlist. See: http://developer.echonest.com/"
+        return
+
     tracks = rdio.get(keys=args.track)
     track = tracks[args.track]
     trackname, artistname = track['name'], track['artist']
 
     query = {
-        'api_key': args.lastfm_key,
+        'api_key': args.echonest_key,
         'format': 'json',
-        'method': 'track.getsimilar',
-        'artist': artistname,
-        'track': trackname,
-        'limit': 40,
-        'autocorrect': '1',
+        'song_id': 'rdio-us-streaming:song:%s' % args.track,
+        'type': 'song-radio',
+        'results': 25,
+        'bucket': 'id:rdio-us-streaming',
+        'limit': 'true',
     }
-    lastfm_url = urlunsplit(('http', 'ws.audioscrobbler.com', '/2.0/', urlencode(query), ''))
+    url = urlunsplit(('http', 'developer.echonest.com', '/api/v4/playlist/static', urlencode(query), ''))
 
     http = httplib2.Http()
-    resp, cont = http.request(lastfm_url)
+    resp, cont = http.request(url)
     if resp.status != 200:
-        logging.error('Unexpected response from Last.fm: %d %s', resp.status, resp.reason)
+        logging.error('Unexpected response from Echo Nest: %d %s', resp.status, resp.reason)
         return
 
-    similar = json.loads(cont)
-    logging.debug("Similar track response: %r", similar)
-    similar_tracks = similar['similartracks']['track']
+    improv = json.loads(cont)
+    logging.debug("Playlist response: %r", improv)
+    if improv['response']['status']['code'] == 5:
+        logging.error("Oops, Echo Nest doesn't know about the Rdio track %s by %s (%s).", trackname, artistname, args.track)
+        return
+    elif improv['response']['status']['code'] != 0:
+        logging.error("Oops, Echo Nest said: %s", improv['response']['status']['message'])
+        return
+
+    improv_tracks = [song['foreign_ids'][0]['foreign_id'].rsplit(':', 1)[-1] for song in improv['response']['songs']]
 
     if args.playlist:
         playlistkey = args.playlist
@@ -262,33 +273,13 @@ def improvise_playlist(rdio, args):
         rdio.addToPlaylist(playlist=playlistkey, tracks=args.track)
     else:
         playlist = rdio.createPlaylist(name=datetime.now().strftime('Improvisation %Y-%m-%d'),
-            description='Improvised from %s by %s (powered by Last.fm)' % (trackname, artistname),
+            description='Improvised from %s by %s (powered by Echo Nest)' % (trackname, artistname),
             tracks=args.track)
         playlistkey = playlist['key']
 
-    progress = ProgressBar(maxval=25).start()
-    tracks_added = 0
-    for lastfm_track in similar_tracks:
-        logging.debug('Last.fm track: %r', lastfm_track)
-        lfm_artistname, lfm_trackname = lastfm_track['artist']['name'].encode('utf8'), lastfm_track['name'].encode('utf8')
-        query = ' '.join((lfm_artistname, lfm_trackname))
-        results = rdio.search(query=query, types='Track', never_or='true', count=1)
-        if results['number_results'] < 1:
-            logging.warn("Couldn't find %s by %s on Rdio", lfm_trackname, lfm_artistname)
-            continue
-
-        similar_track = results['results'][0]
-        if not similar_track['canStream']:
-            logging.warn("Can't stream %s by %s from Rdio, skipping", lfm_trackname, lfm_artistname)
-            continue
-
-        rdio.addToPlaylist(playlist=playlistkey, tracks=similar_track['key'])
-
-        tracks_added += 1
-        progress.update(tracks_added)
-        if tracks_added >= 25:
-            break
-    progress.finish()
+    progress = ProgressBar()
+    for track in progress(improv_tracks):
+        rdio.addToPlaylist(playlist=playlistkey, tracks=track)
 
     print "Playlist improvised into %s" % playlist['shortUrl']
 
@@ -314,7 +305,7 @@ def main(argv):
     parser.add_argument('--consumer-token', help='Rdio API consumer token')
     parser.add_argument('--consumer-secret', help='Rdio API consumer secret')
     parser.add_argument('--access-token', help='Rdio access token (in web POST format)')
-    parser.add_argument('--lastfm-key', help='Last.fm API key')
+    parser.add_argument('--echonest-key', help='Echo Nest API key')
     subparsers = parser.add_subparsers(title='subcommands', metavar='COMMAND')
 
     parser_configure = subparsers.add_parser('configure', help='configures the API keys')
@@ -354,7 +345,7 @@ def main(argv):
     verbosity = sum(args.verbosity)
     verbosity = 0 if verbosity < 0 else verbosity if verbosity < 4 else 4
     log_level = (logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG)[verbosity]
-    logging.basicConfig(level=log_level)
+    logging.basicConfig(level=log_level, format='%(levelname)s: %(message)s')
     logging.info('Set log level to %s', logging.getLevelName(log_level))
 
     try:
