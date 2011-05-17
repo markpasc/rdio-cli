@@ -1,8 +1,12 @@
 # rdio-cli #
 
-`rdio-cli` is a command line application for controlling some Rdio API functions.
+`rdio-cli` is a command line application for controlling some Rdio API functions. It can:
 
-Currently it supports listing your playlists and shuffling a playlist.
+* search Rdio for tracks, albums, and artists
+* show you tracks, albums, and artists
+* list your playlists
+* sort or shuffle a playlist
+* create a new playlist based on a song (using the Echo Nest API)
 
 
 ## Installation ##
@@ -11,7 +15,7 @@ Install it as any other Python program:
 
     $ python setup.py install
 
-If you don't want to install its dependencies to your system, try installing it in a [virtual environment](http://www.virtualenv.org/). As the Rdio client library is distributed as an egg, installing it with `pip` doesn't work. You can manually install [the `rdio` dependency from github](https://github.com/rdio/rdio-python) if you must use `pip`.
+If you don't want to install its dependencies system-wide, try installing it in a [virtual environment](http://www.virtualenv.org/). As the Rdio client library is distributed as an egg, installing it with `pip` doesn't work. You can manually install [the `rdio` dependency from github](https://github.com/rdio/rdio-python) if you must use `pip`.
 
 
 ## Configuring ##
