@@ -2,11 +2,11 @@ from setuptools import setup
 
 setup(
     name='rdio-cli',
-    version='1.0',
+    version='1.1',
     packages=[],
     include_package_data=True,
     scripts=['bin/rdio'],
 
-    requires=['argparse', 'Rdio', 'PrettyTable', 'progressbar'],
-    install_requires=['argparse', 'Rdio', 'PrettyTable', 'progressbar'],
+    requires=['termtool', 'Rdio'],
+    install_requires=['termtool', 'Rdio'],
 )
