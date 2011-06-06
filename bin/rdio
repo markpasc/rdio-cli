@@ -75,6 +75,28 @@ class Rdio(Termtool):
         self.write_config_file(*config_args)
         print "Configured!"
 
+    @subcommand(help='adds items to a playlist')
+    @argument('playlist', help='ID of playlist to add to')
+    @argument('key', nargs='+', help='key of thing (song or album) to add to playlist')
+    @authd
+    def add(self, rdio, args):
+        tracks = list()
+
+        logging.info('Identifying those items')
+        progress = self.progressbar()
+        for key in progress(args.key):
+            if key.startswith('t'):
+                tracks.append(key)
+            elif key.startswith('a'):
+                albums = rdio.get(keys=key, extras='trackKeys')
+                album = albums[key]
+                tracks.extend(album['trackKeys'])
+
+        logging.info('Adding items to playlist')
+        progress = self.progressbar()
+        for trackkey in progress(tracks):
+            rdio.addToPlaylist(playlist=args.playlist, tracks=trackkey)
+
     @subcommand(help='lists your playlists')
     @authd
     def playlists(self, rdio, args):
