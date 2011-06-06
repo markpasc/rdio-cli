@@ -217,6 +217,8 @@ class Rdio(Termtool):
 
     @subcommand(help='search for something')
     @argument('query', nargs='*', help='the text to search for')
+    @argument('--type', dest='types', action='append', help='a type of Rdio item to search for (default: track, artist, album)')
+    @argument('--sort', help='field by which to order results (default: relevance)')
     @argument('--artist', default=[], nargs='+', help='search text to require in the artist field')
     @argument('--album', default=[], nargs='+', help='search text to require in the album field')
     @argument('--track', default=[], nargs='+', help='search text to require in the track name field')
@@ -225,7 +227,8 @@ class Rdio(Termtool):
     def search(self, rdio, args):
         query = ' '.join(chain(args.artist, args.album, args.track, args.query))
         logging.debug('Whole query is: %r', query)
-        resultset = rdio.search(query=query, types='Artist,Album,Track', count=args.count)
+        types = ','.join(t.title() for t in args.types) if args.types else 'Artist,Album,Track'
+        resultset = rdio.search(query=query, types=types, count=args.count)
 
         results = (result for result in resultset['results'] if result['type'] in ('t', 'a', 'r'))
         if args.artist:
@@ -249,7 +252,10 @@ class Rdio(Termtool):
                 table.add_row(['', '', result['name'], result['key']])
             else:
                 raise NotImplementedError("Unexpected Rdio object type %r in search results" % result['type'])
-        table.printt()
+        if args.sort:
+            table.printt(sortby=args.sort.title())
+        else:
+            table.printt()
 
     @subcommand(help='create a playlist similar to one track')
     @argument('track', help='the track to improvise from (key)')
