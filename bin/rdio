@@ -20,6 +20,25 @@ from termtool import Termtool, argument, subcommand
 import rdioapi
 
 
+def macapp(fn):
+    @wraps(fn)
+    def baa(self, args, *pargs, **kwargs):
+        try:
+            from appscript import app, k
+        except ImportError:
+            logging.error("This command requires Rdio for Mac and the 'appscript' module.")
+            return
+
+        try:
+            rdio = app('Rdio')
+        except Exception, exc:
+            logging.error("Could not find the Rdio app: %s: %s", type(exc).__name__, str(exc))
+            return
+
+        return fn(self, args, rdio, k, *pargs, **kwargs)
+    return baa
+
+
 def authd(fn):
     @wraps(fn)
     def moo(self, args, *pargs, **kwargs):
@@ -335,6 +354,32 @@ class Rdio(Termtool):
             rdio.addToPlaylist(playlist=playlistkey, tracks=track)
 
         print "Playlist improvised into %s" % playlist['shortUrl']
+
+    @subcommand(help='Start playing the current song (in Rdio for Mac)')
+    @macapp
+    def play(self, args, rdio, k):
+        if rdio.player_state.get() == k.playing:
+            logging.warn("Rdio is already playing")
+            return
+        rdio.play()
+
+    @subcommand(help='Pause the currently playing song (in Rdio for Mac)')
+    @macapp
+    def pause(self, args, rdio, k):
+        if rdio.player_state.get() == k.paused:
+            logging.warn("Rdio is already paused")
+            return
+        rdio.pause()
+
+    @subcommand(help='Skip to the next track (in Rdio for Mac)')
+    @macapp
+    def next(self, args, rdio, k):
+        rdio.next_track()
+
+    @subcommand(help='Go back to the previous track (in Rdio for Mac)')
+    @macapp
+    def previous(self, args, rdio, k):
+        rdio.previous_track()
 
 
 if __name__ == '__main__':
