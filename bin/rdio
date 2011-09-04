@@ -337,7 +337,19 @@ class Rdio(Termtool):
             logging.error("Oops, Echo Nest said: %s", improv['response']['status']['message'])
             return
 
-        improv_tracks = [song['foreign_ids'][0]['foreign_id'].rsplit(':', 1)[-1] for song in improv['response']['songs']]
+        def rdio_track(song):
+            foreign_ids = song['foreign_ids']
+            # Sometimes our 'limit': 'true' doesn't work, I guess.
+            if not foreign_ids:
+                return
+            assert len(foreign_ids)
+            rdio_id_set = foreign_ids[0]
+            rdio_full_id = rdio_id_set['foreign_id']
+            rdio_bare_id = rdio_full_id.rsplit(':', 1)[-1]
+            return rdio_bare_id
+
+        improv_songs = improv['response']['songs']
+        improv_tracks = [track for track in (rdio_track(song) for song in improv_songs) if track]
 
         if args.playlist:
             playlistkey = args.playlist
