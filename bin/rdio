@@ -89,7 +89,7 @@ class Rdio(Termtool):
             '--access-token', args.access_token,
         ]
         if args.echonest_key:
-            config_args.extend(('--echonext-key', args.echonest_key))
+            config_args.extend(('--echonest-key', args.echonest_key))
 
         self.write_config_file(*config_args)
         print "Configured!"
