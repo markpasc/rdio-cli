@@ -298,6 +298,32 @@ class Rdio(Termtool):
         else:
             table.printt()
 
+    def echonest_query(self, path, query, args):
+        query = dict(query)
+        query.update({
+            'api_key': args.echonest_key,
+            'format': 'json',
+        })
+        url = urlunsplit(('http', 'developer.echonest.com', path, urlencode(query), ''))
+        logging.debug("Asking Echo Nest for: %s", url)
+
+        http = rdioapi.httplib2.Http()
+        resp, cont = http.request(url)
+        if resp.status != 200:
+            logging.error('Unexpected response from Echo Nest: %d %s', resp.status, resp.reason)
+            logging.error(cont)
+            return
+
+        improv = json.loads(cont)
+        logging.debug("Playlist response: %r", improv)
+        if improv['response']['status']['code'] == 5:
+            logging.error("Oops, Echo Nest doesn't know about the Rdio track %s by %s (%s).", trackname, artistname, args.track)
+            return
+        elif improv['response']['status']['code'] != 0:
+            logging.error("Oops, Echo Nest said: %s", improv['response']['status']['message'])
+            return
+        return improv
+
     @subcommand(help='create a playlist similar to one track')
     @argument('track', help='the track to improvise from (key)')
     @argument('--playlist', help='the playlist to append to (key; by default, makes a new playlist)')
@@ -312,29 +338,15 @@ class Rdio(Termtool):
         trackname, artistname = track['name'], track['artist']
 
         query = {
-            'api_key': args.echonest_key,
-            'format': 'json',
             'song_id': 'rdio-us-streaming:song:%s' % args.track,
             'type': 'song-radio',
             'results': 25,
             'bucket': 'id:rdio-us-streaming',
             'limit': 'true',
         }
-        url = urlunsplit(('http', 'developer.echonest.com', '/api/v4/playlist/static', urlencode(query), ''))
 
-        http = rdioapi.httplib2.Http()
-        resp, cont = http.request(url)
-        if resp.status != 200:
-            logging.error('Unexpected response from Echo Nest: %d %s', resp.status, resp.reason)
-            return
-
-        improv = json.loads(cont)
-        logging.debug("Playlist response: %r", improv)
-        if improv['response']['status']['code'] == 5:
-            logging.error("Oops, Echo Nest doesn't know about the Rdio track %s by %s (%s).", trackname, artistname, args.track)
-            return
-        elif improv['response']['status']['code'] != 0:
-            logging.error("Oops, Echo Nest said: %s", improv['response']['status']['message'])
+        improv = self.echonest_query('/api/v4/playlist/static', query, args)
+        if improv is None:
             return
 
         def rdio_track(song):
