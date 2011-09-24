@@ -212,21 +212,23 @@ class Rdio(Termtool):
         playlists = rdio.get(keys=args.playlist, extras='trackKeys')
         playlist = playlists[args.playlist]
         trackkeys = playlist['trackKeys']
+        by = tuple(by)
 
         # Let's add the sorted tracks before deleting the existing ones, so
         # if deletion fails you have duplicates instead of an empty playlist.
-        if args.by == 'key':
+        if by == ('key',):
             # Abuse Rdio's auto-sort in addToPlaylist, instead of laborious
             # sorting and re-adding here.
             rdio.addToPlaylist(playlist=args.playlist, tracks=','.join(trackkeys))
         else:
-            if args.by == 'shuffle':
+            if by == ('shuffle',):
                 # We don't care about the track data, so don't fetch it.
                 sorted_trackkeys = list(trackkeys)
                 shuffle(sorted_trackkeys)
             else:
                 trackdata = rdio.get(keys=','.join(trackkeys))
-                sorted_tracks = sorted(trackdata.itervalues(), key=lambda x: x.get(args.by))
+                sorted_tracks = sorted(trackdata.itervalues(),
+                    key=lambda x: tuple(x.get(by_field) for by_field in by))
                 sorted_trackkeys = [track['key'] for track in sorted_tracks]
 
             logging.debug('Original tracks: %r', trackkeys)
@@ -245,16 +247,16 @@ class Rdio(Termtool):
 
     @subcommand(help='sorts a playlist')
     @argument('playlist', help='the playlist key')
-    @argument('--by', default='key', help='the track property to sort by (try "artist" or ""; default "key")')
+    @argument('--by', action='append', help='the track property to sort by (try "artist" or "name"; default "key")')
     @authd
     def sort(self, rdio, args):
-        self.sort_playlist(rdio, args.by, args)
+        self.sort_playlist(rdio, args.by or ('key',), args)
 
     @subcommand(help='shuffles a playlist')
     @argument('playlist', help='the playlist key')
     @authd
     def shuffle(self, rdio, args):
-        self.sort_playlist(rdio, 'shuffle', args)
+        self.sort_playlist(rdio, ('shuffle',), args)
 
     @subcommand(help='search for something')
     @argument('query', nargs='*', help='the text to search for')
