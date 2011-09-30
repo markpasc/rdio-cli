@@ -3,7 +3,7 @@
 from __future__ import division
 
 from datetime import datetime
-from itertools import chain, count, izip
+from itertools import chain, islice
 from functools import wraps
 import logging
 from random import shuffle
@@ -143,7 +143,7 @@ class Rdio(Termtool):
         table.set_field_align('#', 'r')
         for col in cols[1:]:
             table.set_field_align(col, 'l')
-        for i, track in izip(count(1), tracks):
+        for i, track in enumerate(tracks, 1):
             duration_secs = track['duration']
             duration = '%d:%02d' % (duration_secs / 60, duration_secs % 60)
             table.add_row([i, track['name'], track['artist'], track['album'], duration, track['key']])
@@ -283,8 +283,6 @@ class Rdio(Termtool):
 
         cols = ['Track', 'Album', 'Artist', 'Key']
         table = self.table(cols)
-        for col in cols:
-            table.set_field_align(col, 'l')
         for result in results:
             result_name = u'%(name)s' if result['type'] == 'r' else u'%(name)s by %(artist)s'
             if result['type'] == 't':
@@ -299,6 +297,29 @@ class Rdio(Termtool):
             table.printt(sortby=args.sort.title())
         else:
             table.printt()
+
+    @subcommand(help="show your network's heavy rotation")
+    @argument('--count', type=int, default=15, help='the number of results to show (default: 15)')
+    @argument('--new-to-me', action='store_true', help="omit albums in your heavy rotation")
+    @authd
+    def heavy(self, rdio, args):
+        user = rdio.currentUser()
+        user_key = user['key']
+
+        albums = rdio.getHeavyRotation(user=user_key, friends='true', type='albums', limit=args.count * 2)
+        if args.new_to_me:
+            your_albums = rdio.getHeavyRotation(user=user_key, type='albums', limit=args.count)
+            your_album_keys = set(album['key'] for album in your_albums)
+            albums = (album for album in albums if album['key'] not in your_album_keys)
+        albums = sorted(albums, key=lambda a: a['hits'], reverse=True)
+        albums = islice(albums, args.count)
+
+        cols = ['Hits', 'Artist', 'Album', 'Friends', 'Key']
+        table = self.table(cols)
+        for album in albums:
+            friends = u', '.join(u['firstName'] for u in album['users'])
+            table.add_row([album['hits'], album['artist'], album['name'], friends, album['key']])
+        table.printt()
 
     def echonest_query(self, path, query, args):
         query = dict(query)
