@@ -10,6 +10,7 @@ from random import shuffle
 import readline
 from urllib import urlencode
 from urlparse import parse_qsl, urlunsplit
+import webbrowser
 
 try:
     import json
@@ -207,6 +208,15 @@ class Rdio(Termtool):
             raise NotImplementedError('Unknown Rdio thing type %r' % thing_type)
 
         func(rdio, thing, args)
+
+    @subcommand(help='open something in your web browser')
+    @argument('key', help='the key of the thing to open')
+    @authd
+    def open(self, rdio, args):
+        things = rdio.get(keys=args.key)
+        thing = things[args.key]
+
+        webbrowser.open(thing['shortUrl'])
 
     def sort_playlist(self, rdio, by, args):
         playlists = rdio.get(keys=args.playlist, extras='trackKeys')
