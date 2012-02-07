@@ -395,11 +395,26 @@ class Rdio(Termtool):
         try:
             improv = self.echonest_query('/api/v4/playlist/static', query, args)
         except EchoNestError, exc:
-            if exc.code == 5:
-                logging.error("Oops, Echo Nest doesn't know about the Rdio track %s by %s (%s).", trackname, artistname, args.track)
-            else:
+            try:
+                if exc.code != 5:
+                    raise
+                logging.info("Oops, Echo Nest doesn't know about Rdio track %s. Trying a song search.", args.track)
+
+                improv = self.echonest_query('/api/v4/song/search', {
+                    'title': trackname,
+                    'artist': artistname,
+                    'results': 1,
+                }, args)
+                if improv['response']['status']['code'] == 5:
+                    logging.error("Oops, Echo Nest doesn't seem to know about the song %s by %s (Rdio track %s).", trackname, artistname, args.track)
+                    return
+
+                query['song_id'] = improv['response']['songs'][0]['id']
+                improv = self.echonest_query('/api/v4/playlist/static', query, args)
+
+            except EchoNestError, exc:
                 logging.error("Oops, Echo Nest said: %s", str(exc))
-            return
+                return
         if improv is None:
             return
 
@@ -422,6 +437,7 @@ class Rdio(Termtool):
             self.print_tracks_in_thing(rdio, thing)
             return
 
+        logging.info("Making a %d song playlist improvised from %s by %s.", len(improv_tracks), trackname, artistname)
         if args.playlist:
             playlistkey = args.playlist
             playlist = rdio.get(keys=playlistkey)[playlistkey]
