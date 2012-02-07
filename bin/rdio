@@ -373,6 +373,7 @@ class Rdio(Termtool):
     @subcommand(help='create a playlist similar to one track')
     @argument('track', help='the track to improvise from (key)')
     @argument('--playlist', help='the playlist to append to (key; by default, makes a new playlist)')
+    @argument('--preview', action='store_true', help="show the playlist but don't create it")
     @authd
     def improvise(self, rdio, args):
         if not args.echonest_key:
@@ -415,6 +416,11 @@ class Rdio(Termtool):
 
         improv_songs = improv['response']['songs']
         improv_tracks = [track for track in (rdio_track(song) for song in improv_songs) if track]
+
+        if args.preview:
+            thing = {'trackKeys': improv_tracks}
+            self.print_tracks_in_thing(rdio, thing)
+            return
 
         if args.playlist:
             playlistkey = args.playlist
