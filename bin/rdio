@@ -216,6 +216,7 @@ class Rdio(Termtool):
         things = rdio.get(keys=args.key)
         thing = things[args.key]
 
+        logging.info("Opening URL %s", thing['shortUrl'])
         webbrowser.open(thing['shortUrl'])
 
     def sort_playlist(self, rdio, by, args):
