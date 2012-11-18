@@ -409,7 +409,13 @@ class Rdio(Termtool):
                     logging.error("Oops, Echo Nest doesn't seem to know about the song %s by %s (Rdio track %s).", trackname, artistname, args.track)
                     return
 
-                query['song_id'] = improv['response']['songs'][0]['id']
+                songs = improv['response']['songs']
+                if not songs:
+                    logging.debug(repr(improv))
+                    logging.error("Oops, Echo Nest doesn't seem to know about the song %s by %s (Rdio track %s).", trackname, artistname, args.track)
+                    return
+
+                query['song_id'] = songs[0]['id']
                 improv = self.echonest_query('/api/v4/playlist/static', query, args)
 
             except EchoNestError, exc:
