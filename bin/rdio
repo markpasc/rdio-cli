@@ -74,7 +74,7 @@ class Rdio(Termtool):
 
     """Control Rdio from the command line."""
 
-    @subcommand(help='configures the API keys')
+    @subcommand(help='configure the API keys')
     def configure(self, args):
         if not args.consumer_token:
             args.consumer_token = raw_input('Consumer token: ')
@@ -111,7 +111,7 @@ class Rdio(Termtool):
         self.write_config_file(*config_args)
         print "Configured!"
 
-    @subcommand(help='adds items to a playlist')
+    @subcommand(help='add items to a playlist')
     @argument('playlist', help='ID of playlist to add to')
     @argument('key', nargs='+', help='key of thing (song or album) to add to playlist')
     @authd
@@ -133,7 +133,7 @@ class Rdio(Termtool):
         for trackkey in progress(tracks):
             rdio.addToPlaylist(playlist=args.playlist, tracks=trackkey)
 
-    @subcommand(help='lists your playlists')
+    @subcommand(help='list your playlists')
     @authd
     def playlists(self, rdio, args):
         playlists = rdio.getPlaylists()
@@ -203,7 +203,7 @@ class Rdio(Termtool):
             table.add_row([track['trackNum'], track['name'], track['artist'], track['album'], duration, track['key']])
         table.printt()
 
-    @subcommand(help='shows something to you')
+    @subcommand(help='show a playlist, artist, album or track')
     @argument('key', help='the key of the thing to show')
     @authd
     def show(self, rdio, args):
@@ -225,7 +225,7 @@ class Rdio(Termtool):
 
         func(rdio, thing, args)
 
-    @subcommand(help='open something in your web browser')
+    @subcommand(help='open a playlist, artist, album or track in your web browser')
     @argument('key', help='the key of the thing to open')
     @authd
     def open(self, rdio, args):
@@ -272,20 +272,20 @@ class Rdio(Termtool):
 
         logging.info('Sorted playlist "%s"', playlist['name'])
 
-    @subcommand(help='sorts a playlist')
+    @subcommand(help='sort a playlist')
     @argument('playlist', help='the playlist key')
     @argument('--by', action='append', help='the track property to sort by (try "artist" or "name"; default "key")')
     @authd
     def sort(self, rdio, args):
         self.sort_playlist(rdio, args.by or ('key',), args)
 
-    @subcommand(help='shuffles a playlist')
+    @subcommand(help='shuffle a playlist')
     @argument('playlist', help='the playlist key')
     @authd
     def shuffle(self, rdio, args):
         self.sort_playlist(rdio, ('shuffle',), args)
 
-    @subcommand(help='search for something')
+    @subcommand(help='search for an album, artist or track')
     @argument('query', nargs='*', help='the text to search for')
     @argument('--type', dest='types', action='append', help='a type of Rdio item to search for (default: track, artist, album)')
     @argument('--sort', help='field by which to order results (default: relevance)')
@@ -370,7 +370,7 @@ class Rdio(Termtool):
             raise EchoNestError(improv)
         return improv
 
-    @subcommand(help='create a playlist similar to one track')
+    @subcommand(help='create a playlist similar to a track')
     @argument('track', help='the track to improvise from (key)')
     @argument('--playlist', help='the playlist to append to (key; by default, makes a new playlist)')
     @argument('--preview', action='store_true', help="show the playlist but don't create it")
