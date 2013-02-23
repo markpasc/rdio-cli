@@ -72,7 +72,7 @@ def authd(fn):
 @argument('--echonest-key', help='Echo Nest API key')
 class Rdio(Termtool):
 
-    description = 'Control Rdio from the command line.'
+    """Control Rdio from the command line."""
 
     @subcommand(help='configures the API keys')
     def configure(self, args):
