@@ -2,6 +2,7 @@
 
 from __future__ import division
 
+import argparse
 from datetime import datetime
 from itertools import chain, islice
 from functools import wraps
@@ -459,6 +460,69 @@ class Rdio(Termtool):
             rdio.addToPlaylist(playlist=playlistkey, tracks=track)
 
         print "Playlist improvised into %s" % playlist['shortUrl']
+
+    @subcommand(help='list or export your collection')
+    @argument('outfile', type=argparse.FileType('w'), help='file to output (use - to print)')
+    @argument('--json', action='store_true', help='use JSON instead of a table')
+    @authd
+    def collection(self, rdio, args):
+        user = rdio.currentUser(extras='albumCount')
+        user_key = user['key']
+
+        album_count = user['albumCount']
+        if album_count > 10:
+            logging.warn("Downloading collection of %d albums (this will take a while)", album_count)
+        else:
+            logging.info("Downloading collection of %d albums", album_count)
+        bar = self.progressbar(maxval=album_count).start()
+
+        data = list()
+        albums_processed = 0
+        start = 0
+        while True:
+            logging.debug("Asking for albums[%d:50]", start)
+            albums = rdio.getAlbumsInCollection(user=user_key, start=start, count=50, sort='dateAdded')
+            if not albums:
+                logging.debug("Got 0 albums back! Stopping at offset %d", start)
+                break
+            logging.debug("Got %d albums back", len(albums))
+
+            for album in albums:
+                num_collected_tracks = len(album['trackKeys'])
+                num_album_tracks = len(album['itemTrackKeys'])
+                if num_collected_tracks == num_album_tracks:
+                    logging.debug("Collected all %d/%d tracks, listing complete album", num_collected_tracks, num_album_tracks)
+                    data.append(album)
+                else:
+                    logging.debug("Collected only %d/%d tracks, asking what tracks they are", num_collected_tracks, num_album_tracks)
+                    tracks = rdio.getTracksForAlbumInCollection(user=user_key, album=album['key'])
+                    data.extend(tracks)
+
+                albums_processed += 1
+                bar.update(albums_processed)
+
+            start += len(albums)
+
+        bar.finish()
+
+        if args.json:
+            logging.debug("Dumping all that json data to %s", args.outfile.name)
+            json.dump(data, args.outfile, sort_keys=True, indent=4)
+        else:
+            table = self.table(['Key', 'Artist', 'Album', '#', 'Track'])
+            for item in data:
+                if item['type'] == 'al':  # CollectionAlbums, not Albums
+                    fields = ('albumKey', 'artist', 'name', None, None)
+                elif item['type'] == 't':
+                    fields = ('key', 'artist', 'album', 'trackNum', 'name')
+                else:
+                    raise NotImplementedError("Item of unknown type %r in collection data" % item['type'])
+                table.add_row([item.get(x, '') for x in fields])
+            table_text = table.get_string()
+            args.outfile.write(table_text.encode('utf-8'))
+            args.outfile.write('\n')
+        logging.info("Finished")
+        return
 
     @subcommand(help='Start playing the current song (in Rdio for Mac)')
     @macapp
