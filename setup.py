@@ -7,6 +7,6 @@ setup(
     include_package_data=True,
     scripts=['bin/rdio'],
 
-    requires=['termtool', 'Rdio'],
-    install_requires=['termtool', 'Rdio'],
+    requires=['termtool', 'prettytable', 'progressbar', 'Rdio'],
+    install_requires=['termtool', 'prettytable>=0.7', 'progressbar', 'Rdio'],
 )
