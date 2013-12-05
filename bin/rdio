@@ -146,15 +146,14 @@ class Rdio(Termtool):
 
         cols = ['Name', 'Owner', 'Relationship', 'Key']
         table = self.table(cols)
-        for col in cols:
-            table.set_field_align(col, 'l')
+        table.align = 'l'
         for pl in playlists['owned']:
             table.add_row([pl['name'], pl['owner'], 'Owner', pl['key']])
         for pl in playlists['collab']:
             table.add_row([pl['name'], pl['owner'], 'Collaborator', pl['key']])
         for pl in playlists['subscribed']:
             table.add_row([pl['name'], pl['owner'], 'Subscriber', pl['key']])
-        table.printt()
+        print(table)
 
     def print_tracks_in_thing(self, rdio, thing):
         trackkeys = thing['trackKeys']
@@ -163,14 +162,13 @@ class Rdio(Termtool):
 
         cols = ['#', 'Title', 'Artist', 'Album', 'Time', 'Key']
         table = self.table(cols)
-        table.set_field_align('#', 'r')
-        for col in cols[1:]:
-            table.set_field_align(col, 'l')
+        table.align = 'l'
+        table.align['#'] = 'r'
         for i, track in enumerate(tracks, 1):
             duration_secs = track['duration']
             duration = '%d:%02d' % (duration_secs / 60, duration_secs % 60)
             table.add_row([i, track['name'], track['artist'], track['album'], duration, track['key']])
-        table.printt()
+        print(table)
 
     def show_playlist(self, rdio, playlist, args):
         print "%(name)s\n%(owner)s\n%(shortUrl)s\n" % playlist
@@ -183,13 +181,12 @@ class Rdio(Termtool):
 
         cols = ['Name', 'Artist', 'Time', 'Key']
         table = self.table(cols)
-        for col in cols:
-            table.set_field_align(col, 'l')
+        table.align = 'l'
         for album in albums:
             duration_secs = album['duration']
             duration = '%d:%02d' % (duration_secs / 60, duration_secs % 60)
             table.add_row([album['name'], album['artist'], duration, album['key']])
-        table.printt()
+        print(table)
 
     def show_album(self, rdio, album, args):
         duration_secs = album['duration']
@@ -201,13 +198,12 @@ class Rdio(Termtool):
     def show_track(self, rdio, track, args):
         cols = ['#', 'Title', 'Artist', 'Album', 'Time', 'Key']
         table = self.table(cols)
-        for col in cols:
-            table.set_field_align(col, 'l')
+        table.align = 'l'
         for track in (track,):
             duration_secs = track['duration']
             duration = '%d:%02d' % (duration_secs / 60, duration_secs % 60)
             table.add_row([track['trackNum'], track['name'], track['artist'], track['album'], duration, track['key']])
-        table.printt()
+        print(table)
 
     @subcommand(help='show a playlist, artist, album or track')
     @argument('key', help='the key of the thing to show')
@@ -327,9 +323,9 @@ class Rdio(Termtool):
             else:
                 raise NotImplementedError("Unexpected Rdio object type %r in search results" % result['type'])
         if args.sort:
-            table.printt(sortby=args.sort.title())
+            print(table.get_string(sortby=args.sort.title()))
         else:
-            table.printt()
+            print(table)
 
     @subcommand(help="show your network's heavy rotation")
     @argument('--count', type=int, default=15, help='the number of results to show (default: 15)')
@@ -352,7 +348,7 @@ class Rdio(Termtool):
         for album in albums:
             friends = u', '.join(u['firstName'] for u in album['users'])
             table.add_row([album['hits'], album['artist'], album['name'], friends, album['key']])
-        table.printt()
+        print(table)
 
     def echonest_query(self, path, query, args):
         query = dict(query)
