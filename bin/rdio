@@ -40,7 +40,7 @@ class EchoNestError(Exception):
 
 def macapp(fn):
     @wraps(fn)
-    def baa(self, args, *pargs, **kwargs):
+    def run_with_app(self, args, *pargs, **kwargs):
         try:
             from appscript import app, k
         except ImportError:
@@ -54,17 +54,22 @@ def macapp(fn):
             return
 
         return fn(self, args, rdio, k, *pargs, **kwargs)
-    return baa
+    return run_with_app
 
 
 def authd(fn):
     @wraps(fn)
-    def moo(self, args, *pargs, **kwargs):
-        data_store = {'access_token': dict(parse_qsl(args.access_token))}
+    def run_authorized(self, args, *pargs, **kwargs):
+        access_token = args.access_token
+        if access_token is None:
+            logging.error("This command requires authorization to use your Rdio account; use 'configure' first to configure the tool with it.")
+            return
+
+        data_store = {'access_token': dict(parse_qsl(access_token))}
         logging.debug("ACCESS TOKEN: %r", data_store['access_token'])
         rdio = rdioapi.Rdio(args.consumer_token, args.consumer_secret, data_store)
         return fn(self, rdio, args, *pargs, **kwargs)
-    return moo
+    return run_authorized
 
 
 @argument('--consumer-token', help='Rdio API consumer token')
