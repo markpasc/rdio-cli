@@ -8,5 +8,5 @@ setup(
     scripts=['bin/rdio'],
 
     requires=['termtool', 'prettytable', 'progressbar', 'Rdio'],
-    install_requires=['termtool', 'prettytable>=0.7', 'progressbar', 'Rdio'],
+    install_requires=['termtool>=1.1', 'prettytable>=0.7', 'progressbar', 'Rdio'],
 )
