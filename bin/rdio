@@ -329,25 +329,35 @@ class Rdio(Termtool):
 
     @subcommand(help="show your network's heavy rotation")
     @argument('--count', type=int, default=15, help='the number of results to show (default: 15)')
+    @argument('--mine', action='store_true', help="show your heavy rotation instead of your network's")
     @argument('--new-to-me', action='store_true', help="omit albums in your heavy rotation")
     @authd
     def heavy(self, rdio, args):
         user = rdio.currentUser()
         user_key = user['key']
 
-        albums = rdio.getHeavyRotation(user=user_key, friends='true', type='albums', limit=args.count * 2)
-        if args.new_to_me:
-            your_albums = rdio.getHeavyRotation(user=user_key, type='albums', limit=args.count)
-            your_album_keys = set(album['key'] for album in your_albums)
-            albums = (album for album in albums if album['key'] not in your_album_keys)
+        if args.mine:
+            albums = rdio.getHeavyRotation(user=user_key, type='albums', limit=args.count)
+        else:
+            albums = rdio.getHeavyRotation(user=user_key, friends='true', type='albums', limit=args.count * 2)
+            if args.new_to_me:
+                your_albums = rdio.getHeavyRotation(user=user_key, type='albums', limit=args.count)
+                your_album_keys = set(album['key'] for album in your_albums)
+                albums = (album for album in albums if album['key'] not in your_album_keys)
         albums = sorted(albums, key=lambda a: a['hits'], reverse=True)
         albums = islice(albums, args.count)
 
         cols = ['Hits', 'Artist', 'Album', 'Friends', 'Key']
+        if args.mine:
+            del cols[3]
         table = self.table(cols)
+        table.align = 'l'
         for album in albums:
-            friends = u', '.join(u['firstName'] for u in album['users'])
-            table.add_row([album['hits'], album['artist'], album['name'], friends, album['key']])
+            row = [album['hits'], album['artist'], album['name'], album['key']]
+            if not args.mine:
+                friends = u', '.join(u['firstName'] for u in album.get('users', ()))
+                row[3:3] = friends
+            table.add_row(row)
         print(table)
 
     def echonest_query(self, path, query, args):
